@@ -66,33 +66,44 @@ class MainActivity : ComponentActivity() {
 
         }
 
-    private fun readBankTransaction()
-    {
-        val cursor:Cursor?=contentResolver.query(
-            Uri.parse("content://sms//inbox"),
-            null,null,null,"date DESC"
+
+    private fun readBankTransaction() {
+        val cursor: Cursor? = contentResolver.query(
+            Uri.parse("content://sms/inbox"),
+            null, null, null, "date DESC"
         )
-        cursor?.use{
-            while(it.moveToNext())
-            {
 
-                val sender=it.getString(it.getColumnIndexOrThrow("address"))
-                val message=it.getString(it.getColumnIndexOrThrow("body"))
+        cursor?.use {
+            while (it.moveToNext()) {
+                val sender = it.getString(it.getColumnIndexOrThrow("address"))
+                val message = it.getString(it.getColumnIndexOrThrow("body"))
 
-                if(isBankSms(sender,message))
-                {
-                    val transaction=extractTransacation(message)
-                    if(transaction!=null)
-                    {
-                        transactionList.add("From: $sender\n$transaction")
+                if (isBankSms(sender, message)) {
+                    val transactionDetails = extractTransaction(message)
+                    if (transactionDetails != "Transaction Not Found") {
+                        transactionList.add(transactionDetails)
                     }
                 }
-                transactionList.reverse()
-                adapter.notifyDataSetChanged()
             }
+            transactionList.reverse()
+            adapter.notifyDataSetChanged()
         }
-
     }
+
+
+    private fun extractTransaction(message: String): String {
+        val regex = """debited by (\d+(\.\d+)?) .*? trf to ([A-Z ]+)""".toRegex(RegexOption.IGNORE_CASE)
+        val matchResult = regex.find(message)
+
+        return matchResult?.let {
+            val amount = it.groupValues[1]  // Extract amount
+            val receiver = it.groupValues[3]  // Extract receiver name
+            "Receiver: $receiver\nAmount: ₹$amount"
+        } ?: "Transaction Not Found"
+    }
+
+
+
 
     private fun isBankSms(sender: String?, message: String): Boolean {
         return sender?.lowercase()?.contains("paytm") == true ||
